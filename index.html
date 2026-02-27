@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TPS3R App - Dashboard</title>
+    <title>TPS3R Bangkit Bersih - Karang Bajo</title>
     
     <!-- PWA CONFIGURATION -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"TPS3R App","short_name":"TPS3R","start_url":".","display":"standalone","background_color":"#f8fafc","theme_color":"#4f46e5"}'>
+    <link rel="manifest" href='data:application/manifest+json,{"name":"TPS3R Bangkit Bersih","short_name":"TPS3R","start_url":".","display":"standalone","background_color":"#f8fafc","theme_color":"#4f46e5"}'>
     
-    <!-- Mobile Web App Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -34,19 +33,17 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f8fafc; }
-        
-        /* Custom Scrollbar for horizontal tables on mobile */
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
-        
         .gradient-bg { background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%); }
         .gradient-text { background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        /* Padding bottom to avoid content hidden behind bottom nav on mobile */
         @media (max-width: 768px) { .pb-mobile-nav { padding-bottom: 90px; } }
+        
+        /* Custom Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #10b981; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #10b981; }
     </style>
 </head>
 <body class="text-slate-800">
@@ -63,14 +60,8 @@
             appId: "1:633800588096:web:285372a1bd5f9f6e6e18a5"
         };
 
-        const firebaseConfig = (typeof __firebase_config !== 'undefined') 
-            ? JSON.parse(__firebase_config) 
-            : firebaseConfigFallback;
-
-        if (!firebase.apps.length) {
-            try { firebase.initializeApp(firebaseConfig); } 
-            catch (e) { console.error("Gagal inisialisasi Firebase:", e); }
-        }
+        const firebaseConfig = (typeof __firebase_config !== 'undefined') ? JSON.parse(__firebase_config) : firebaseConfigFallback;
+        if (!firebase.apps.length) { try { firebase.initializeApp(firebaseConfig); } catch (e) { console.error("Firebase Init Error:", e); } }
         
         const auth = firebase.auth();
         const db = firebase.firestore();
@@ -78,14 +69,8 @@
 
         // --- UTILS ---
         const formatRupiah = (number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
-        const formatIndoDate = (timestamp) => {
-             const d = timestamp ? new Date(timestamp) : new Date();
-             return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-        };
-        const formatIndoDateTime = (timestamp) => {
-             const d = timestamp ? new Date(timestamp) : new Date();
-             return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' });
-        };
+        const formatIndoDate = (timestamp) => { const d = timestamp ? new Date(timestamp) : new Date(); return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }); };
+        const formatIndoDateTime = (timestamp) => { const d = timestamp ? new Date(timestamp) : new Date(); return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }); };
         
         const CATEGORIES = [
             { id: 'rumah_tangga', label: 'Rumah Tangga', rate: 15000 },
@@ -98,11 +83,11 @@
 
         // --- ICONS ---
         const Icons = {
-            Leaf: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>,
             Dashboard: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>,
             Users: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
             FileText: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>,
             Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+            Info: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
             Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
             Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
             Image: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>,
@@ -110,23 +95,44 @@
             Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
             DownloadCloud: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>,
             UploadCloud: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v-9"/><path d="m16 7-4-4-4 4"/></svg>,
-            FileDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
+            FileDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>,
+            Lock: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>,
+            Unlock: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
         };
 
         const { useState, useEffect, useRef } = React;
 
         function App() {
+            // STATE APLIKASI
             const [view, setView] = useState('dashboard');
             const [user, setUser] = useState(null);
             const [customers, setCustomers] = useState([]);
             const [isDbConnected, setIsDbConnected] = useState(false);
             
-            // Filters for reports
+            // STATE MODE ADMIN
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [showAdminLogin, setShowAdminLogin] = useState(false);
+            const [inputPin, setInputPin] = useState('');
+            const [pinError, setPinError] = useState('');
+
+            // STATE PROFIL & PENGATURAN (Diambil dari DB)
+            const defaultProfile = {
+                password: "krb1",
+                tentang: "TPS3R Bangkit Bersih Adalah sebuah wadah yang mengorganisir dan mengelola sampah masyarakat desa Karang Bajo secara mandiri, dengan tujuan menciptakan lingkungan yang bersih dan bernilai ekonomis.",
+                anggota: "1. Eri Sutisna\n2. Deden Asriandi\n3. Aedi",
+                ketua: "Ketua TPS3R",
+                kepalaDesa: "Kepala Desa Karang Bajo",
+                kontak: "081234567890",
+                alamatDesa: "Kantor Desa Karang Bajo, Kec. Bayan, Lombok Utara"
+            };
+            const [profile, setProfile] = useState(defaultProfile);
+            const [showProfileEdit, setShowProfileEdit] = useState(false);
+            const [editProfileData, setEditProfileData] = useState(defaultProfile);
+
+            // STATE LAPORAN & FORM
             const defaultStart = new Date(); defaultStart.setDate(1);
             const [startDate, setStartDate] = useState(defaultStart.toISOString().split('T')[0]);
             const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-
-            // Form & Interaction States
             const [isEditing, setIsEditing] = useState(false);
             const [editId, setEditId] = useState(null);
             const [showAddModal, setShowAddModal] = useState(false);
@@ -134,9 +140,9 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [receiptData, setReceiptData] = useState(null);
             
-            const receiptRef = useRef(null); // Reference for html2canvas thermal print
+            const receiptRef = useRef(null);
 
-            // Init Firebase Auth
+            // 1. INIT AUTH (ANONYMOUS AGAR SEMUA BISA BACA)
             useEffect(() => {
                 const initAuth = async () => {
                     try {
@@ -152,30 +158,73 @@
                 return () => unsubscribe();
             }, []);
 
-            // Fetch Data
+            // 2. FETCH DATA WARGA & PROFIL DARI FIRESTORE
             useEffect(() => {
                 if (!user) { setIsDbConnected(false); return; }
-                const customersRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers');
                 
-                const unsubscribe = customersRef.onSnapshot((snapshot) => {
+                // Ambil Data Warga
+                const customersRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers');
+                const unsubCustomers = customersRef.onSnapshot((snapshot) => {
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     data.sort((a, b) => b.id - a.id);
                     setCustomers(data);
                     setIsDbConnected(true); 
-                }, (error) => {
-                    console.error("Firebase Error:", error);
-                    setIsDbConnected(false);
+                }, (error) => { setIsDbConnected(false); });
+
+                // Ambil Data Pengaturan/Profil
+                const settingsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('profile');
+                const unsubSettings = settingsRef.onSnapshot((doc) => {
+                    if (doc.exists) {
+                        setProfile(doc.data());
+                    } else {
+                        // Jika belum ada, buat bawaan
+                        settingsRef.set(defaultProfile);
+                        setProfile(defaultProfile);
+                    }
                 });
-                return () => unsubscribe();
+
+                return () => { unsubCustomers(); unsubSettings(); };
             }, [user]);
 
-            // CRUD Handlers
-            const openAddModal = () => { setIsEditing(false); setEditId(null); setNewCustomer({ name: '', type: 'rumah_tangga', address: '', phone: '', rate: 15000 }); setShowAddModal(true); };
-            const handleEditCustomer = (customer) => { setIsEditing(true); setEditId(customer.id); setNewCustomer({ name: customer.name, type: customer.type, address: customer.address, phone: customer.phone, rate: customer.rate }); setShowAddModal(true); };
+            // --- FUNGSI MODE ADMIN ---
+            const handleToggleAdmin = () => {
+                if (isAdmin) {
+                    setIsAdmin(false); // Matikan admin
+                } else {
+                    setInputPin('');
+                    setPinError('');
+                    setShowAdminLogin(true); // Tampilkan popup sandi
+                }
+            };
+
+            const submitAdminLogin = (e) => {
+                e.preventDefault();
+                if (inputPin === profile.password) {
+                    setIsAdmin(true);
+                    setShowAdminLogin(false);
+                } else {
+                    setPinError("Sandi salah!");
+                }
+            };
+
+            const saveProfileData = async (e) => {
+                e.preventDefault();
+                try {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('profile').set(editProfileData, { merge: true });
+                    setShowProfileEdit(false);
+                    alert("Profil & Sandi berhasil diperbarui!");
+                } catch(err) {
+                    alert("Gagal menyimpan profil.");
+                }
+            };
+
+            // --- FUNGSI CRUD WARGA (HANYA JIKA ADMIN) ---
+            const openAddModal = () => { if(!isAdmin) return; setIsEditing(false); setEditId(null); setNewCustomer({ name: '', type: 'rumah_tangga', address: '', phone: '', rate: 15000 }); setShowAddModal(true); };
+            const handleEditCustomer = (customer) => { if(!isAdmin) return; setIsEditing(true); setEditId(customer.id); setNewCustomer({ name: customer.name, type: customer.type, address: customer.address, phone: customer.phone, rate: customer.rate }); setShowAddModal(true); };
 
             const handleSaveCustomer = async (e) => {
                 e.preventDefault();
-                if (!isDbConnected) return alert("Koneksi Database Terputus!");
+                if (!isDbConnected || !isAdmin) return;
                 try {
                     const collectionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers');
                     if (isEditing) {
@@ -191,44 +240,35 @@
             const handleTypeChange = (e) => { const selectedType = e.target.value; const category = CATEGORIES.find(c => c.id === selectedType); setNewCustomer({ ...newCustomer, type: selectedType, rate: category ? category.rate : 0 }); };
             
             const togglePaymentStatus = async (id) => { 
+                if (!isAdmin) return; // Pengunjung tidak bisa ubah status
                 const customer = customers.find(c => c.id === id);
                 if (!customer) return;
                 const newStatus = customer.status === 'lunas' ? 'belum' : 'lunas';
                 const paymentDate = newStatus === 'lunas' ? Date.now() : null; 
-                
                 try {
                     await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers').doc(String(id)).set({ status: newStatus, paymentDate }, { merge: true });
                 } catch(err) { alert("Gagal memperbarui status!"); }
             };
 
             const handleDelete = async (id) => { 
+                if(!isAdmin) return;
                 if(confirm('Hapus pelanggan?')) {
                     try { await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers').doc(String(id)).delete(); } 
                     catch(err) { alert("Gagal menghapus data!"); }
                 }
             };
 
-            // Download Receipt As Image (THERMAL FORMAT)
+            // --- FUNGSI PRINT & EXPORT ---
             const downloadReceiptAsImage = async () => {
                 if(!receiptRef.current) return;
                 try {
-                    const canvas = await html2canvas(receiptRef.current, { 
-                        scale: 2, // Biar resolusi gambar tajam saat diprint
-                        backgroundColor: "#ffffff",
-                        useCORS: true
-                    });
+                    const canvas = await html2canvas(receiptRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
                     const image = canvas.toDataURL("image/png");
                     const link = document.createElement("a");
-                    link.href = image;
-                    link.download = `Struk_Thermal_${receiptData.name.replace(/\s+/g, '_')}.png`;
-                    link.click();
-                } catch (error) {
-                    console.error("Gagal membuat gambar struk:", error);
-                    alert("Gagal mengunduh gambar. Coba lagi.");
-                }
+                    link.href = image; link.download = `Struk_TPS3R_${receiptData.name.replace(/\s+/g, '_')}.png`; link.click();
+                } catch (error) { alert("Gagal mengunduh gambar. Coba lagi."); }
             };
 
-            // Export Reports & Sync
             const getFilteredDataByDate = () => {
                 const start = new Date(startDate); start.setHours(0,0,0,0);
                 const end = new Date(endDate); end.setHours(23,59,59,999);
@@ -243,97 +283,94 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(16);
-                doc.setTextColor(79, 70, 229);
-                doc.text("LAPORAN TPS3R", 105, 20, null, null, "center");
+                // Header
+                doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(79, 70, 229);
+                doc.text("LAPORAN TPS3R BANGKIT BERSIH", 105, 20, null, null, "center");
                 
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
+                doc.setFontSize(10); doc.setTextColor(100, 100, 100);
                 doc.text(`Periode: ${formatIndoDate(startDate)} s/d ${formatIndoDate(endDate)}`, 105, 27, null, null, "center");
 
+                // Summary
                 const lunas = dataToPrint.filter(c => c.status === 'lunas');
                 const total = lunas.reduce((a, c) => a + c.rate, 0);
-                
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10); doc.setFont("helvetica", "normal");
                 doc.text(`Total Pelanggan Terfilter: ${dataToPrint.length}`, 14, 40);
                 doc.text(`Sudah Bayar: ${lunas.length}`, 14, 46);
                 doc.text(`Total Terkumpul: ${formatRupiah(total)}`, 14, 52);
 
+                // Table
                 const tableData = dataToPrint.map((c, i) => [
-                    i + 1, c.name, getCategoryLabel(c.type), c.status === 'lunas' ? 'LUNAS' : 'BELUM', formatRupiah(c.rate)
+                    i + 1, c.name, c.address || '-', getCategoryLabel(c.type), c.status === 'lunas' ? 'LUNAS' : 'BELUM', formatRupiah(c.rate)
                 ]);
 
                 doc.autoTable({
                     startY: 58,
-                    head: [['No', 'Nama Pelanggan', 'Kategori', 'Status', 'Jumlah']],
+                    head: [['No', 'Nama', 'Alamat', 'Kategori', 'Status', 'Jumlah']],
                     body: tableData,
                     theme: 'grid',
                     headStyles: { fillColor: [79, 70, 229] },
-                    styles: { fontSize: 9, cellPadding: 3 },
-                    columnStyles: { 0: { cellWidth: 10 }, 3: { fontStyle: 'bold' }, 4: { halign: 'right' } }
+                    styles: { fontSize: 8, cellPadding: 3 },
+                    columnStyles: { 0: { cellWidth: 10 }, 4: { fontStyle: 'bold' }, 5: { halign: 'right' } }
                 });
+
+                // Tanda Tangan
+                let finalY = doc.lastAutoTable.finalY + 20;
+                if (finalY > 250) { doc.addPage(); finalY = 30; } // Hindari terpotong halaman baru
+
+                doc.setFontSize(10); doc.setTextColor(0,0,0);
+                
+                // Tanda Tangan Kiri (Ketua)
+                doc.text("Mengetahui,", 20, finalY);
+                doc.text("Ketua TPS3R", 20, finalY + 6);
+                doc.setFont("helvetica", "bold");
+                doc.text(profile.ketua || "Ketua TPS3R", 20, finalY + 30);
+                
+                // Tanda Tangan Kanan (Kades)
+                doc.setFont("helvetica", "normal");
+                doc.text(`Desa Karang Bajo, ${formatIndoDate(new Date())}`, 125, finalY);
+                doc.text("Kepala Desa Karang Bajo", 125, finalY + 6);
+                doc.setFont("helvetica", "bold");
+                doc.text(profile.kepalaDesa || "Kepala Desa", 125, finalY + 30);
 
                 doc.save(`Laporan_TPS3R_${startDate}_to_${endDate}.pdf`);
             };
 
             const generateReportExcel = (dataList = null, isBackup = false) => {
                 const dataToExport = dataList || getFilteredDataByDate();
-                const formattedData = dataToExport.map(c => ({
-                    ID: c.id, Nama: c.name, Kategori: c.type, Alamat: c.address, NoHP: c.phone || '-', Tarif: c.rate, Status: c.status, TanggalBayar: c.paymentDate ? new Date(c.paymentDate).toISOString() : '-'
-                }));
-
+                const formattedData = dataToExport.map(c => ({ ID: c.id, Nama: c.name, Alamat: c.address, Kategori: c.type, NoHP: c.phone || '-', Tarif: c.rate, Status: c.status, TanggalBayar: c.paymentDate ? new Date(c.paymentDate).toISOString() : '-' }));
                 const worksheet = XLSX.utils.json_to_sheet(formattedData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Data_TPS3R");
-                
-                const fileName = isBackup ? `Backup_Semua_Data_TPS3R.xlsx` : `Laporan_TPS3R_${startDate}_to_${endDate}.xlsx`;
-                XLSX.writeFile(workbook, fileName);
+                XLSX.writeFile(workbook, isBackup ? `Backup_Semua_Data_TPS3R.xlsx` : `Laporan_TPS3R_${startDate}_to_${endDate}.xlsx`);
             };
 
             const handleImportExcel = (e) => {
-                const file = e.target.files[0];
-                if(!file) return;
-                
+                if (!isAdmin) return;
+                const file = e.target.files[0]; if(!file) return;
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
                     try {
-                        const bstr = evt.target.result;
-                        const wb = XLSX.read(bstr, { type: 'binary' });
-                        const wsname = wb.SheetNames[0];
-                        const ws = wb.Sheets[wsname];
-                        const data = XLSX.utils.sheet_to_json(ws);
-                        
+                        const bstr = evt.target.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws);
                         if(data.length === 0) return alert("File kosong!");
-                        if(!confirm(`Ditemukan ${data.length} data. Apakah Anda yakin ingin memulihkan/menambahkan data ini?`)) return;
+                        if(!confirm(`Ditemukan ${data.length} data. Lanjutkan pemulihan data?`)) return;
 
                         const batch = db.batch();
                         const collectionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers');
-                        
                         let count = 0;
                         data.forEach(row => {
                             if(row.Nama && row.Kategori) {
                                 const docId = row.ID ? String(row.ID) : String(Date.now() + count);
-                                const docRef = collectionRef.doc(docId);
-                                batch.set(docRef, {
-                                    id: Number(docId), name: String(row.Nama), type: String(row.Kategori), address: String(row.Alamat || ''), phone: String(row.NoHP === '-' ? '' : row.NoHP), rate: Number(row.Tarif || 15000), status: String(row.Status || 'belum'), paymentDate: row.TanggalBayar !== '-' ? new Date(row.TanggalBayar).getTime() : null
-                                }, { merge: true });
+                                batch.set(collectionRef.doc(docId), { id: Number(docId), name: String(row.Nama), type: String(row.Kategori), address: String(row.Alamat || ''), phone: String(row.NoHP === '-' ? '' : row.NoHP), rate: Number(row.Tarif || 15000), status: String(row.Status || 'belum'), paymentDate: row.TanggalBayar && row.TanggalBayar !== '-' ? new Date(row.TanggalBayar).getTime() : null }, { merge: true });
                                 count++;
                             }
                         });
-                        
-                        await batch.commit();
-                        alert(`Berhasil mengimpor ${count} data!`);
-                        e.target.value = ''; 
-                    } catch (error) {
-                        alert("Gagal membaca file Excel. Pastikan format sesuai dengan file Backup.");
-                    }
+                        await batch.commit(); alert(`Berhasil mengimpor ${count} data!`); e.target.value = ''; 
+                    } catch (error) { alert("Gagal membaca file Excel. Pastikan format sesuai dengan file Backup."); }
                 };
                 reader.readAsBinaryString(file);
             };
 
-            // Dashboard Metrics
+            // --- KALKULASI DASHBOARD ---
             const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.address.toLowerCase().includes(searchTerm.toLowerCase()));
             const totalCustomers = customers.length;
             const totalIncomeCollected = customers.filter(c => c.status === 'lunas').reduce((acc, curr) => acc + curr.rate, 0);
@@ -351,41 +388,58 @@
 
             return (
                 <div className="min-h-screen pb-mobile-nav md:pb-0 flex flex-col font-sans relative">
-                    {/* Header */}
+                    
+                    {/* HEADER UTAMA */}
                     <header className="gradient-bg shadow-md text-white sticky top-0 z-30">
                         <div className="max-w-6xl mx-auto px-4 md:px-8 flex justify-between items-center h-16 md:h-20">
+                            
+                            {/* Logo & Judul */}
                             <div className="flex items-center gap-3">
-                                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm"><Icons.Leaf /></div>
+                                <img src="tps3r.svg" alt="Logo TPS3R" className="w-10 h-10 object-contain bg-white/20 p-1 rounded-xl backdrop-blur-sm" onError={(e) => { e.target.style.display = 'none'; }} />
                                 <div>
-                                    <h1 className="font-bold text-lg md:text-xl leading-tight">TPS3R App</h1>
-                                    <p className="text-[10px] text-indigo-100 hidden md:block">Karang Bajo - Sistem Administrasi</p>
+                                    <h1 className="font-bold text-lg md:text-xl leading-tight tracking-wide">TPS3R Bangkit Bersih</h1>
+                                    <p className="text-[10px] text-indigo-100 hidden md:block">Desa Karang Bajo</p>
                                 </div>
                             </div>
+                            
+                            {/* Desktop Nav */}
                             <nav className="hidden md:flex gap-2">
                                 <NavItem icon={Icons.Dashboard} label="Dashboard" tabId="dashboard" />
                                 <NavItem icon={Icons.Users} label="Data Warga" tabId="customers" />
                                 <NavItem icon={Icons.FileText} label="Laporan" tabId="rekap" />
-                                <NavItem icon={Icons.Settings} label="Sinkron" tabId="sync" />
+                                <NavItem icon={Icons.Info} label="Tentang" tabId="about" />
+                                {isAdmin && <NavItem icon={Icons.Settings} label="Sync" tabId="sync" />}
                             </nav>
-                            <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full text-xs font-medium border border-white/20">
-                                <div className={`w-2 h-2 rounded-full ${isDbConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
-                                <span className="hidden sm:inline">{isDbConnected ? 'Tersambung' : 'Terputus'}</span>
+                            
+                            {/* Tombol Mode Admin (Toggle) */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/20">
+                                    <span className="text-xs font-bold hidden md:inline">{isAdmin ? 'Admin ON' : 'Mode Admin'}</span>
+                                    <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input type="checkbox" checked={isAdmin} onChange={handleToggleAdmin} name="toggle" id="toggle" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0.5 left-0.5 transition-all duration-300"/>
+                                        <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-indigo-900/50 cursor-pointer"></label>
+                                    </div>
+                                    {isAdmin ? <Icons.Unlock /> : <Icons.Lock />}
+                                </div>
                             </div>
                         </div>
                     </header>
 
                     <main className="flex-1 w-full max-w-6xl mx-auto p-4 md:p-8">
-                        {/* VIEW DASHBOARD */}
+                        
+                        {/* VIEW 1: DASHBOARD */}
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-fade-in-up">
                                 <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-extrabold text-slate-800">Halo, Admin! 👋</h2>
-                                        <p className="text-slate-500 text-sm mt-1">Pantau perkembangan iuran warga bulan ini dengan mudah.</p>
+                                        <h2 className="text-2xl font-extrabold text-slate-800">Halo, {isAdmin ? 'Admin!' : 'Warga Karang Bajo'} 👋</h2>
+                                        <p className="text-slate-500 text-sm mt-1">Pantau transparansi iuran sampah bulan ini.</p>
                                     </div>
-                                    <button onClick={() => setView('customers')} className="gradient-bg text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition flex items-center gap-2">
-                                        <Icons.Plus /> Tambah Tagihan
-                                    </button>
+                                    {isAdmin && (
+                                        <button onClick={() => setView('customers')} className="gradient-bg text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition flex items-center gap-2">
+                                            <Icons.Plus /> Tambah Tagihan
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group">
@@ -405,7 +459,7 @@
                             </div>
                         )}
 
-                        {/* VIEW DATA WARGA */}
+                        {/* VIEW 2: DATA WARGA */}
                         {view === 'customers' && (
                             <div className="space-y-4 animate-fade-in-up">
                                 <div className="flex flex-col sm:flex-row justify-between gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-16 md:top-0 z-20">
@@ -413,9 +467,11 @@
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Search /></div>
                                         <input type="text" placeholder="Cari nama atau alamat..." className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500 text-sm outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                                     </div>
-                                    <button onClick={openAddModal} className="gradient-bg text-white px-5 py-2.5 rounded-xl font-bold shadow-md hover:opacity-90 transition flex justify-center items-center gap-2">
-                                        <Icons.Plus /> Warga Baru
-                                    </button>
+                                    {isAdmin && (
+                                        <button onClick={openAddModal} className="gradient-bg text-white px-5 py-2.5 rounded-xl font-bold shadow-md hover:opacity-90 transition flex justify-center items-center gap-2">
+                                            <Icons.Plus /> Warga Baru
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto hide-scrollbar">
@@ -425,7 +481,7 @@
                                                 <th className="px-5 py-4">Data Warga</th>
                                                 <th className="px-5 py-4">Tarif & Kategori</th>
                                                 <th className="px-5 py-4 text-center">Status Bayar</th>
-                                                <th className="px-5 py-4 text-right">Aksi</th>
+                                                <th className="px-5 py-4 text-right">Struk / Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
@@ -441,7 +497,11 @@
                                                         <div className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 inline-block mt-1 font-semibold text-slate-500">{getCategoryLabel(customer.type)}</div>
                                                     </td>
                                                     <td className="px-5 py-4 text-center">
-                                                        <button onClick={() => togglePaymentStatus(customer.id)} className={`px-4 py-2 rounded-xl text-[10px] font-bold border uppercase tracking-wider transition w-24 ${customer.status === 'lunas' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 shadow-sm' : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-300 hover:text-indigo-500'}`}>
+                                                        <button 
+                                                            onClick={() => togglePaymentStatus(customer.id)} 
+                                                            disabled={!isAdmin}
+                                                            className={`px-4 py-2 rounded-xl text-[10px] font-bold border uppercase tracking-wider transition w-24 ${!isAdmin ? 'cursor-default' : 'hover:scale-105'} ${customer.status === 'lunas' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm' : 'bg-white text-slate-400 border-slate-200'}`}
+                                                        >
                                                             {customer.status === 'lunas' ? 'LUNAS ✔' : 'BELUM'}
                                                         </button>
                                                         {customer.paymentDate && <div className="text-[9px] text-slate-400 mt-1">{formatIndoDate(customer.paymentDate)}</div>}
@@ -451,8 +511,12 @@
                                                             <button onClick={() => customer.status === 'lunas' ? setReceiptData(customer) : null} className={`p-2 rounded-lg transition flex items-center gap-1 ${customer.status === 'lunas' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-slate-50 text-slate-300 cursor-not-allowed'}`} title="Buka Struk">
                                                                 <Icons.FileText /> <span className="text-xs font-bold hidden md:inline">Struk</span>
                                                             </button>
-                                                            <button onClick={() => handleEditCustomer(customer)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition"><Icons.Edit /></button>
-                                                            <button onClick={() => handleDelete(customer.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Icons.Trash2 /></button>
+                                                            {isAdmin && (
+                                                                <>
+                                                                    <button onClick={() => handleEditCustomer(customer)} className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition"><Icons.Edit /></button>
+                                                                    <button onClick={() => handleDelete(customer.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Icons.Trash2 /></button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -463,7 +527,7 @@
                             </div>
                         )}
 
-                        {/* VIEW LAPORAN */}
+                        {/* VIEW 3: LAPORAN */}
                         {view === 'rekap' && (
                             <div className="space-y-6 animate-fade-in-up max-w-4xl mx-auto">
                                 <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
@@ -476,12 +540,57 @@
                                         <button onClick={generateReportPDF} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3.5 rounded-xl font-bold transition shadow-md flex justify-center items-center gap-2"><Icons.FileDown /> Download PDF</button>
                                         <button onClick={() => generateReportExcel()} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-bold transition shadow-md flex justify-center items-center gap-2"><Icons.FileDown /> Download Excel</button>
                                     </div>
+                                    <p className="text-xs text-center mt-4 text-slate-400">*Laporan PDF otomatis menyertakan tanda tangan Kepala Desa & Ketua TPS3R.</p>
                                 </div>
                             </div>
                         )}
 
-                        {/* VIEW SINKRONISASI */}
-                        {view === 'sync' && (
+                        {/* VIEW 4: TENTANG & ANGGOTA */}
+                        {view === 'about' && (
+                            <div className="space-y-6 animate-fade-in-up max-w-4xl mx-auto">
+                                <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -z-10"></div>
+                                    
+                                    <div className="flex justify-between items-start mb-6">
+                                        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Icons.Info /> Profil TPS3R</h2>
+                                        {isAdmin && (
+                                            <button onClick={() => { setEditProfileData(profile); setShowProfileEdit(true); }} className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-200 transition flex gap-2 items-center">
+                                                <Icons.Edit /> Edit Profil & Sandi
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-6 text-slate-600 leading-relaxed text-sm md:text-base">
+                                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                            <h3 className="font-bold text-slate-800 mb-2">Tentang Kami</h3>
+                                            <p className="whitespace-pre-line">{profile.tentang}</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                                <h3 className="font-bold text-slate-800 mb-2">Struktur Organisasi</h3>
+                                                <p className="mb-1"><span className="font-semibold">Kepala Desa:</span> {profile.kepalaDesa}</p>
+                                                <p className="mb-4"><span className="font-semibold">Ketua TPS3R:</span> {profile.ketua}</p>
+                                                <h4 className="font-bold text-slate-700 mb-1">Daftar Anggota:</h4>
+                                                <p className="whitespace-pre-line text-sm">{profile.anggota}</p>
+                                            </div>
+                                            
+                                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                                                <div>
+                                                    <h3 className="font-bold text-slate-800 mb-2">Informasi Kontak</h3>
+                                                    <p className="mb-2 text-sm">Untuk informasi lebih lanjut mengenai layanan pengelolaan sampah ini, Anda dapat menghubungi atau datang langsung ke kantor kami.</p>
+                                                    <p className="mb-1 text-sm"><span className="font-semibold">📞 Telepon/WA:</span> {profile.kontak}</p>
+                                                    <p className="text-sm"><span className="font-semibold">📍 Alamat:</span> {profile.alamatDesa}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* VIEW 5: SINKRONISASI (HANYA ADMIN) */}
+                        {view === 'sync' && isAdmin && (
                             <div className="space-y-6 animate-fade-in-up max-w-4xl mx-auto">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 text-center">
@@ -503,17 +612,65 @@
                         )}
                     </main>
 
+                    {/* MOBILE NAV */}
                     <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 pb-safe">
                         <div className="flex justify-around items-center p-2">
                             <NavItem icon={Icons.Dashboard} label="Home" tabId="dashboard" />
                             <NavItem icon={Icons.Users} label="Warga" tabId="customers" />
                             <NavItem icon={Icons.FileText} label="Laporan" tabId="rekap" />
-                            <NavItem icon={Icons.Settings} label="Sync" tabId="sync" />
+                            <NavItem icon={Icons.Info} label="Tentang" tabId="about" />
+                            {isAdmin && <NavItem icon={Icons.Settings} label="Sync" tabId="sync" />}
                         </div>
                     </nav>
 
-                    {/* MODAL TAMBAH/EDIT */}
-                    {showAddModal && (
+                    {/* MODAL: LOGIN ADMIN (PIN) */}
+                    {showAdminLogin && (
+                        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowAdminLogin(false)}>
+                            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.Lock /></div>
+                                <h3 className="text-xl font-bold text-slate-800 mb-2 text-center">Akses Admin</h3>
+                                <p className="text-xs text-slate-500 text-center mb-6">Masukkan sandi khusus untuk mengedit data.</p>
+                                <form onSubmit={submitAdminLogin} className="space-y-4">
+                                    <input autoFocus type="password" value={inputPin} onChange={(e) => setInputPin(e.target.value)} className="w-full border-2 border-slate-200 p-3 rounded-xl bg-slate-50 focus:border-indigo-500 outline-none text-center font-bold tracking-[0.3em]" placeholder="••••" />
+                                    {pinError && <p className="text-red-500 text-xs text-center font-bold">{pinError}</p>}
+                                    <button type="submit" className="w-full gradient-bg text-white py-3 rounded-xl font-bold shadow-lg">Buka Akses</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL: EDIT PROFIL & SANDI (HANYA ADMIN) */}
+                    {showProfileEdit && isAdmin && (
+                        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto pt-10 pb-10" onClick={() => setShowProfileEdit(false)}>
+                            <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl animate-fade-in-up my-auto" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-bold text-slate-800 mb-6 border-b pb-3 flex items-center gap-2"><Icons.Edit /> Edit Profil & Keamanan</h3>
+                                <form onSubmit={saveProfileData} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 hide-scrollbar">
+                                    <div>
+                                        <label className="text-xs font-bold text-indigo-600 block mb-1">🔑 Sandi Admin Baru</label>
+                                        <input required type="text" value={editProfileData.password} onChange={(e) => setEditProfileData({...editProfileData, password: e.target.value})} className="w-full border-none p-3 rounded-xl bg-indigo-50 outline-none text-sm font-bold" />
+                                        <p className="text-[10px] text-slate-400 mt-1">Sandi ini digunakan untuk menghidupkan Mode Admin.</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Nama Kepala Desa</label><input type="text" value={editProfileData.kepalaDesa} onChange={(e) => setEditProfileData({...editProfileData, kepalaDesa: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Nama Ketua TPS3R</label><input type="text" value={editProfileData.ketua} onChange={(e) => setEditProfileData({...editProfileData, ketua: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm" /></div>
+                                    </div>
+                                    <div><label className="text-xs font-bold text-slate-500 block mb-1">Deskripsi TPS3R</label><textarea required value={editProfileData.tentang} onChange={(e) => setEditProfileData({...editProfileData, tentang: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm h-24 resize-none" /></div>
+                                    <div><label className="text-xs font-bold text-slate-500 block mb-1">Daftar Anggota</label><textarea value={editProfileData.anggota} onChange={(e) => setEditProfileData({...editProfileData, anggota: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm h-28 resize-none" placeholder="1. Anggota Satu&#10;2. Anggota Dua" /></div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">No. HP / Kontak</label><input type="text" value={editProfileData.kontak} onChange={(e) => setEditProfileData({...editProfileData, kontak: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Alamat Kantor</label><input type="text" value={editProfileData.alamatDesa} onChange={(e) => setEditProfileData({...editProfileData, alamatDesa: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm" /></div>
+                                    </div>
+                                    <div className="pt-4 flex gap-3 sticky bottom-0 bg-white pb-2">
+                                        <button type="button" onClick={() => setShowProfileEdit(false)} className="flex-1 bg-slate-100 text-slate-600 py-3.5 rounded-xl font-bold hover:bg-slate-200">Batal</button>
+                                        <button type="submit" className="flex-1 gradient-bg text-white py-3.5 rounded-xl font-bold shadow-lg">Simpan Perubahan</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL: TAMBAH/EDIT WARGA (HANYA ADMIN) */}
+                    {showAddModal && isAdmin && (
                         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
                             <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-xl font-bold text-slate-800 mb-6 border-b pb-3">{isEditing ? 'Edit Data Warga' : 'Tambah Warga Baru'}</h3>
@@ -530,42 +687,29 @@
                         </div>
                     )}
 
-                    {/* HIDDEN THERMAL RECEIPT (Untuk ditangkap jadi gambar) */}
+                    {/* HIDDEN THERMAL RECEIPT */}
                     {receiptData && (
                         <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
                             <div ref={receiptRef} style={{ width: '380px', padding: '24px', backgroundColor: '#ffffff', color: '#000000', fontFamily: "'Courier New', Courier, monospace", fontSize: '14px', lineHeight: '1.5' }}>
-                                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '18px', marginBottom: '4px' }}>TPS3R KARANG BAJO</div>
-                                <div style={{ textAlign: 'center', fontSize: '12px', marginBottom: '16px' }}>Desa Karang Bajo, Kec. Bayan</div>
+                                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '18px', marginBottom: '4px' }}>TPS3R BANGKIT BERSIH</div>
+                                <div style={{ textAlign: 'center', fontSize: '12px', marginBottom: '16px' }}>Desa Karang Bajo</div>
                                 <div style={{ borderBottom: '2px dashed #000', marginBottom: '16px' }}></div>
-                                
                                 <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: '16px' }}>BUKTI PEMBAYARAN IURAN</div>
-                                
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Tanggal:</span><span>{formatIndoDateTime(receiptData.paymentDate || Date.now())}</span></div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>ID TRX:</span><span>TRX-{receiptData.id}</span></div>
                                 <div style={{ borderBottom: '1px dashed #000', margin: '12px 0' }}></div>
-
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Nama:</span><span style={{ fontWeight: 'bold' }}>{receiptData.name}</span></div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Kategori:</span><span>{getCategoryLabel(receiptData.type)}</span></div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span>Status:</span><span style={{ fontWeight: 'bold' }}>LUNAS</span></div>
                                 <div style={{ borderBottom: '1px dashed #000', margin: '12px 0' }}></div>
-                                
-                                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '24px', margin: '16px 0' }}>
-                                    {formatRupiah(receiptData.rate)}
-                                </div>
+                                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '24px', margin: '16px 0' }}>{formatRupiah(receiptData.rate)}</div>
                                 <div style={{ borderBottom: '2px dashed #000', marginBottom: '16px' }}></div>
-                                
-                                <div style={{ textAlign: 'center', fontSize: '12px', marginTop: '16px' }}>
-                                    Terima Kasih<br />
-                                    Simpan struk ini sebagai bukti pembayaran.
-                                </div>
-                                <div style={{ textAlign: 'center', fontSize: '10px', marginTop: '8px' }}>
-                                    Dicetak pada: {formatIndoDateTime(Date.now())}
-                                </div>
+                                <div style={{ textAlign: 'center', fontSize: '12px', marginTop: '16px' }}>Terima Kasih<br />Simpan struk ini sebagai bukti pembayaran.</div>
                             </div>
                         </div>
                     )}
 
-                    {/* MODAL TAMPILAN LAYAR (UI Cantik untuk HP) */}
+                    {/* MODAL TAMPILAN STRUK DI LAYAR */}
                     {receiptData && (
                         <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setReceiptData(null)}>
                             <div className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
@@ -586,7 +730,7 @@
                                 </div>
                                 <div className="px-6 pb-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3 pt-4">
                                     <button onClick={downloadReceiptAsImage} className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-indigo-700 transition shadow-md flex justify-center items-center gap-2">
-                                        <Icons.Image /> Download Gambar Struk (Thermal)
+                                        <Icons.Image /> Download Struk (Thermal)
                                     </button>
                                     <button onClick={() => setReceiptData(null)} className="w-full bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-bold text-sm hover:bg-slate-100 transition">Tutup</button>
                                 </div>
