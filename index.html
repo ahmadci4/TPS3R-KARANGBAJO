@@ -154,7 +154,7 @@
                 ketua: "Ketua TPS3R",
                 kepalaDesa: "Kepala Desa Karang Bajo",
                 kontak: "081234567890",
-                alamatDesa: "Kantor Desa Karang Bajo, Kec. Bayan, Lombok Utara"
+                alamatDesa: "Dusun Dasan Kopang, Desa Karang Bajo, Kec. Bayan, Lombok Utara | Website: tps3rkarangbajo.online | Kode Pos: 83354"
             };
             const [profile, setProfile] = useState(defaultProfile);
             const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -416,7 +416,7 @@
                     doc.setFontSize(16); doc.text("DESA KARANG BAJO", 105, 29, { align: "center" });
                     
                     doc.setFontSize(10); doc.setFont("helvetica", "normal");
-                    doc.text(profile.alamatDesa || "Alamat: Kantor Desa Karang Bajo, Kec. Bayan, Lombok Utara", 105, 35, { align: "center" });
+                    doc.text(profile.alamatDesa || "Dusun Dasan Kopang, Desa Karang Bajo, Kec. Bayan, Lombok Utara | Website: tps3rkarangbajo.online | Kode Pos: 83354", 105, 35, { align: "center" });
                     
                     doc.setLineWidth(1); doc.line(15, 40, 195, 40);
                     doc.setLineWidth(0.3); doc.line(15, 41.5, 195, 41.5);
