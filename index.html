@@ -76,6 +76,23 @@
         const formatIndoDate = (timestamp) => { const d = timestamp ? new Date(timestamp) : new Date(); return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }); };
         const formatIndoDateTime = (timestamp) => { const d = timestamp ? new Date(timestamp) : new Date(); return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }); };
         
+        const getBase64ImageFromUrl = async (imageUrl) => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.width || 200;
+                    canvas.height = img.height || 200;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL("image/png"));
+                };
+                img.onerror = () => resolve(null); 
+                img.src = imageUrl;
+            });
+        };
+
         const CATEGORIES = [
             { id: 'rumah_tangga', label: 'Rumah Tangga', rate: 15000 },
             { id: 'toko', label: 'Toko', rate: 20000 },
@@ -107,7 +124,8 @@
             Star: ({ filled }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={filled ? "#f59e0b" : "none"} stroke={filled ? "#f59e0b" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>,
             CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>,
             TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>,
-            Shield: () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Shield: () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>,
+            Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
         };
 
         const { useState, useEffect, useRef } = React;
@@ -117,6 +135,7 @@
             const [view, setView] = useState('dashboard');
             const [user, setUser] = useState(null);
             const [customers, setCustomers] = useState([]);
+            const [expenses, setExpenses] = useState([]); // Data Pengeluaran
             const [messages, setMessages] = useState([]);
             const [ratings, setRatings] = useState([]);
             const [isDbConnected, setIsDbConnected] = useState(false);
@@ -127,7 +146,7 @@
             const [inputPin, setInputPin] = useState('');
             const [pinError, setPinError] = useState('');
 
-            // STATE PROFIL & PENGATURAN (Diambil dari DB)
+            // STATE PROFIL & PENGATURAN
             const defaultProfile = {
                 password: "krb1",
                 tentang: "TPS3R Bangkit Bersih Adalah sebuah wadah yang mengorganisir dan mengelola sampah masyarakat desa Karang Bajo secara mandiri, dengan tujuan menciptakan lingkungan yang bersih dan bernilai ekonomis.",
@@ -143,15 +162,16 @@
 
             // STATE FORUM & RATING
             const [chatName, setChatName] = useState('');
-            const [chatPhone, setChatPhone] = useState('');
             const [chatText, setChatText] = useState('');
             const [userRating, setUserRating] = useState(0);
             const messagesEndRef = useRef(null);
 
-            // STATE LAPORAN & FORM
+            // STATE LAPORAN, FORM & PENGELUARAN
             const defaultStart = new Date(); defaultStart.setDate(1);
             const [startDate, setStartDate] = useState(defaultStart.toISOString().split('T')[0]);
             const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+            const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+            
             const [isEditing, setIsEditing] = useState(false);
             const [editId, setEditId] = useState(null);
             const [showAddModal, setShowAddModal] = useState(false);
@@ -159,8 +179,12 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [receiptData, setReceiptData] = useState(null);
             const receiptRef = useRef(null);
+            
+            // Modal Penarikan Dana
+            const [showExpenseModal, setShowExpenseModal] = useState(false);
+            const [newExpense, setNewExpense] = useState({ amount: '', reason: '' });
 
-            // 1. INIT AUTH (ANONYMOUS AGAR SEMUA BISA BACA & DISKUSI)
+            // 1. INIT AUTH
             useEffect(() => {
                 const initAuth = async () => {
                     try {
@@ -180,6 +204,7 @@
             useEffect(() => {
                 if (!user) { setIsDbConnected(false); return; }
                 
+                // Fetch Customers
                 const customersRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers');
                 const unsubCustomers = customersRef.onSnapshot((snapshot) => {
                     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -188,13 +213,22 @@
                     setIsDbConnected(true); 
                 }, (error) => { setIsDbConnected(false); });
 
+                // Fetch Expenses
+                const expensesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('expenses');
+                const unsubExpenses = expensesRef.onSnapshot((snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    data.sort((a, b) => b.id - a.id);
+                    setExpenses(data);
+                });
+
+                // Fetch Settings
                 const settingsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('profile');
                 const unsubSettings = settingsRef.onSnapshot((doc) => {
                     if (doc.exists) setProfile(doc.data());
                     else { settingsRef.set(defaultProfile); setProfile(defaultProfile); }
                 });
 
-                // Fetch Forum Messages
+                // Fetch Messages
                 const msgRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('messages').orderBy('createdAt', 'asc');
                 const unsubMsg = msgRef.onSnapshot(snap => {
                     setMessages(snap.docs.map(d => ({id: d.id, ...d.data()})));
@@ -209,29 +243,41 @@
                     if(myRating) setUserRating(myRating.data().stars);
                 });
 
-                return () => { unsubCustomers(); unsubSettings(); unsubMsg(); unsubRating(); };
+                return () => { unsubCustomers(); unsubExpenses(); unsubSettings(); unsubMsg(); unsubRating(); };
             }, [user]);
 
-            // Scroll ke bawah saat ada pesan baru di Forum
             useEffect(() => {
                 if (view === 'forum' && messagesEndRef.current) {
                     messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
                 }
             }, [messages, view]);
 
+            // --- KALKULASI KEUANGAN & DASHBOARD ---
+            const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.address.toLowerCase().includes(searchTerm.toLowerCase()));
+            const totalCustomers = customers.length;
+            
+            // Hitung Semua Pemasukan (Total Lunas)
+            const totalIncomeCollected = customers.filter(c => c.status === 'lunas').reduce((acc, curr) => acc + curr.rate, 0);
+            
+            // Hitung Semua Pengeluaran
+            const totalExpensesVal = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+            
+            // Hitung Saldo Kas Saat Ini
+            const currentBalance = totalIncomeCollected - totalExpensesVal;
+
+            const percentCollected = totalCustomers > 0 ? Math.round((customers.filter(c => c.status === 'lunas').length / totalCustomers) * 100) : 0;
+            const avgRating = ratings.length ? (ratings.reduce((a,c) => a+c.stars, 0) / ratings.length).toFixed(1) : 0;
+
+
             // --- FUNGSI FORUM & RATING ---
             const handleSendMessage = async (e) => {
                 e.preventDefault();
-                if (!chatName || !chatPhone || !chatText) return alert("Mohon isi Nama, No WhatsApp, dan Pesan Anda.");
+                if (!chatText.trim()) return alert("Pesan tidak boleh kosong.");
                 if (!user) return alert("Koneksi terputus.");
+                const finalName = chatName.trim() ? chatName : "Warga Anonim";
                 try {
                     await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('messages').add({
-                        text: chatText,
-                        senderName: chatName,
-                        senderPhone: chatPhone,
-                        createdAt: Date.now(),
-                        isAdmin: isAdmin,
-                        uid: user.uid
+                        text: chatText, senderName: finalName, createdAt: Date.now(), isAdmin: isAdmin, uid: user.uid
                     });
                     setChatText('');
                 } catch (err) { alert("Gagal mengirim pesan."); }
@@ -240,17 +286,16 @@
             const handleRate = async (stars) => {
                 if (!user) return alert("Koneksi terputus.");
                 setUserRating(stars);
-                try {
-                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('ratings').doc(user.uid).set({
-                        stars: stars,
-                        timestamp: Date.now()
-                    });
-                } catch (err) { alert("Gagal mengirim rating."); }
+                try { await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('ratings').doc(user.uid).set({ stars: stars, timestamp: Date.now() }); } 
+                catch (err) { alert("Gagal mengirim rating."); }
             };
 
             // --- FUNGSI MODE ADMIN & PROFIL ---
             const handleToggleAdmin = () => {
-                if (isAdmin) { setIsAdmin(false); } 
+                if (isAdmin) { 
+                    setIsAdmin(false); 
+                    if(view === 'rekap' || view === 'sync') setView('dashboard');
+                } 
                 else { setInputPin(''); setPinError(''); setShowAdminLogin(true); }
             };
 
@@ -264,12 +309,11 @@
                 e.preventDefault();
                 try {
                     await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('settings').doc('profile').set(editProfileData, { merge: true });
-                    setShowProfileEdit(false);
-                    alert("Profil & Sandi berhasil diperbarui!");
+                    setShowProfileEdit(false); alert("Profil & Sandi berhasil diperbarui!");
                 } catch(err) { alert("Gagal menyimpan profil."); }
             };
 
-            // --- FUNGSI CRUD WARGA (HANYA ADMIN) ---
+            // --- FUNGSI CRUD WARGA & PENARIKAN DANA (HANYA ADMIN) ---
             const openAddModal = () => { if(!isAdmin) return; setIsEditing(false); setEditId(null); setNewCustomer({ name: '', type: 'rumah_tangga', address: '', phone: '', rate: 15000 }); setShowAddModal(true); };
             const handleEditCustomer = (customer) => { if(!isAdmin) return; setIsEditing(true); setEditId(customer.id); setNewCustomer({ name: customer.name, type: customer.type, address: customer.address, phone: customer.phone, rate: customer.rate }); setShowAddModal(true); };
 
@@ -302,6 +346,27 @@
                     catch(err) { alert("Gagal menghapus data!"); }
                 }
             };
+            
+            const handleSaveExpense = async (e) => {
+                e.preventDefault();
+                if (!isAdmin) return;
+                const amount = Number(newExpense.amount);
+                if (amount <= 0 || !newExpense.reason.trim()) return alert("Isi jumlah dan keterangan dengan benar!");
+                if (amount > currentBalance) return alert("Penarikan gagal! Saldo kas tidak mencukupi.");
+                
+                try {
+                    const newId = Date.now();
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('expenses').doc(String(newId)).set({
+                        id: newId,
+                        amount: amount,
+                        reason: newExpense.reason,
+                        timestamp: newId
+                    });
+                    setShowExpenseModal(false);
+                    setNewExpense({ amount: '', reason: '' });
+                    alert("Pengeluaran / Penarikan dana berhasil dicatat!");
+                } catch (err) { alert("Gagal mencatat pengeluaran!"); }
+            };
 
             // --- FUNGSI PRINT & EXPORT ---
             const downloadReceiptAsImage = async () => {
@@ -319,55 +384,164 @@
                 const end = new Date(endDate); end.setHours(23,59,59,999);
                 return customers.filter(c => { const itemDate = new Date(c.paymentDate || c.id); return itemDate >= start && itemDate <= end; });
             };
+            
+            const getFilteredExpensesByDate = () => {
+                const start = new Date(startDate); start.setHours(0,0,0,0);
+                const end = new Date(endDate); end.setHours(23,59,59,999);
+                return expenses.filter(e => { const itemDate = new Date(e.timestamp); return itemDate >= start && itemDate <= end; });
+            };
 
-            const generateReportPDF = () => {
-                const dataToPrint = getFilteredDataByDate();
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-                doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(79, 70, 229);
-                doc.text("LAPORAN TPS3R BANGKIT BERSIH", 105, 20, null, null, "center");
-                doc.setFontSize(10); doc.setTextColor(100, 100, 100);
-                doc.text(`Periode: ${formatIndoDate(startDate)} s/d ${formatIndoDate(endDate)}`, 105, 27, null, null, "center");
-
-                const lunas = dataToPrint.filter(c => c.status === 'lunas');
-                const total = lunas.reduce((a, c) => a + c.rate, 0);
-                doc.setFontSize(10); doc.setFont("helvetica", "normal");
-                doc.text(`Total Pelanggan Terfilter: ${dataToPrint.length}`, 14, 40);
-                doc.text(`Sudah Bayar: ${lunas.length}`, 14, 46);
-                doc.text(`Total Terkumpul: ${formatRupiah(total)}`, 14, 52);
-
-                const tableData = dataToPrint.map((c, i) => [ i + 1, c.name, c.address || '-', getCategoryLabel(c.type), c.status === 'lunas' ? 'LUNAS' : 'BELUM', formatRupiah(c.rate) ]);
-                doc.autoTable({ startY: 58, head: [['No', 'Nama', 'Alamat', 'Kategori', 'Status', 'Jumlah']], body: tableData, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 0: { cellWidth: 10 }, 4: { fontStyle: 'bold' }, 5: { halign: 'right' } } });
-
-                let finalY = doc.lastAutoTable.finalY + 20;
-                if (finalY > 250) { doc.addPage(); finalY = 30; } 
-
-                doc.setFontSize(10); doc.setTextColor(0,0,0);
-                doc.text("Mengetahui,", 20, finalY); doc.text("Ketua TPS3R", 20, finalY + 6);
-                doc.setFont("helvetica", "bold"); doc.text(profile.ketua || "Ketua TPS3R", 20, finalY + 30);
+            // GENERATE PDF PROFESIONAL DENGAN KOP SURAT & PENGELUARAN
+            const generateReportPDF = async () => {
+                if(!isAdmin) return;
+                setIsGeneratingPDF(true);
                 
-                doc.setFont("helvetica", "normal"); doc.text(`Desa Karang Bajo, ${formatIndoDate(new Date())}`, 125, finalY); doc.text("Kepala Desa Karang Bajo", 125, finalY + 6);
-                doc.setFont("helvetica", "bold"); doc.text(profile.kepalaDesa || "Kepala Desa", 125, finalY + 30);
+                try {
+                    const dataToPrint = getFilteredDataByDate();
+                    const expensesToPrint = getFilteredExpensesByDate();
+                    const avgRatingCalc = ratings.length ? (ratings.reduce((a,c) => a+c.stars, 0) / ratings.length).toFixed(1) : 0;
+                    
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-                doc.save(`Laporan_TPS3R_${startDate}_to_${endDate}.pdf`);
+                    const logoKiri = await getBase64ImageFromUrl('logokrb.svg');
+                    const logoKanan = await getBase64ImageFromUrl('tps3r.svg');
+
+                    if (logoKiri) doc.addImage(logoKiri, 'PNG', 15, 12, 22, 25);
+                    if (logoKanan) doc.addImage(logoKanan, 'PNG', 173, 12, 22, 22);
+
+                    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+                    doc.text("PEMERINTAH KABUPATEN LOMBOK UTARA", 105, 16, { align: "center" });
+                    doc.text("KECAMATAN BAYAN", 105, 22, { align: "center" });
+                    doc.setFontSize(16); doc.text("DESA KARANG BAJO", 105, 29, { align: "center" });
+                    
+                    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+                    doc.text(profile.alamatDesa || "Alamat: Kantor Desa Karang Bajo, Kec. Bayan, Lombok Utara", 105, 35, { align: "center" });
+                    
+                    doc.setLineWidth(1); doc.line(15, 40, 195, 40);
+                    doc.setLineWidth(0.3); doc.line(15, 41.5, 195, 41.5);
+
+                    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+                    doc.text("LAPORAN KEUANGAN TPS3R BANGKIT BERSIH", 105, 52, { align: "center" });
+                    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+                    doc.text(`Periode: ${formatIndoDate(startDate)} s/d ${formatIndoDate(endDate)}`, 105, 58, { align: "center" });
+
+                    // SUMMARY KEUANGAN
+                    const lunas = dataToPrint.filter(c => c.status === 'lunas');
+                    const totalPemasukan = lunas.reduce((a, c) => a + c.rate, 0);
+                    const totalPengeluaran = expensesToPrint.reduce((a, c) => a + c.amount, 0);
+                    const saldoPeriode = totalPemasukan - totalPengeluaran;
+
+                    doc.setFontSize(10);
+                    doc.text(`Total Warga Lunas: ${lunas.length} Orang`, 15, 70);
+                    doc.text(`Total Pemasukan Iuran: ${formatRupiah(totalPemasukan)}`, 15, 76);
+                    doc.text(`Total Penarikan/Pengeluaran: ${formatRupiah(totalPengeluaran)}`, 15, 82);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Saldo Kas Periode Ini: ${formatRupiah(saldoPeriode)}`, 15, 88);
+                    
+                    // TABEL PEMASUKAN
+                    doc.setFont("helvetica", "bold");
+                    doc.text("1. Rincian Pemasukan Iuran Warga", 15, 98);
+                    const tableData = dataToPrint.map((c, i) => [ i + 1, c.name, c.address || '-', getCategoryLabel(c.type), c.status === 'lunas' ? 'LUNAS' : 'BELUM', formatRupiah(c.rate) ]);
+                    
+                    doc.autoTable({
+                        startY: 102,
+                        head: [['No', 'Nama', 'Alamat', 'Kategori', 'Status', 'Jumlah']],
+                        body: tableData,
+                        theme: 'grid',
+                        headStyles: { fillColor: [40, 40, 40] },
+                        styles: { fontSize: 8, cellPadding: 3 },
+                        columnStyles: { 0: { cellWidth: 10 }, 4: { fontStyle: 'bold' }, 5: { halign: 'right' } }
+                    });
+
+                    let finalY = doc.lastAutoTable.finalY + 12;
+
+                    // TABEL PENGELUARAN (JIKA ADA)
+                    if (expensesToPrint.length > 0) {
+                        if (finalY > 230) { doc.addPage(); finalY = 20; }
+                        doc.setFont("helvetica", "bold");
+                        doc.text("2. Rincian Pengeluaran / Penarikan Dana", 15, finalY);
+                        
+                        const expTableData = expensesToPrint.map((e, i) => [
+                            i + 1, formatIndoDate(e.timestamp), e.reason, formatRupiah(e.amount)
+                        ]);
+
+                        doc.autoTable({
+                            startY: finalY + 4,
+                            head: [['No', 'Tanggal', 'Keterangan / Keperluan', 'Jumlah (Rp)']],
+                            body: expTableData,
+                            theme: 'grid',
+                            headStyles: { fillColor: [185, 28, 28] }, // Warna Merah untuk Pengeluaran
+                            styles: { fontSize: 8, cellPadding: 3 },
+                            columnStyles: { 0: { cellWidth: 10 }, 3: { halign: 'right', fontStyle: 'bold' } }
+                        });
+                        finalY = doc.lastAutoTable.finalY + 12;
+                    }
+
+                    // RATING & KOMENTAR
+                    if (finalY > 230) { doc.addPage(); finalY = 20; }
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Tingkat Kepuasan Masyarakat: ${avgRatingCalc} / 5.0 Bintang (${ratings.length} Ulasan)`, 15, finalY);
+                    finalY += 8;
+                    doc.text("Sorotan Saran & Masukan Warga:", 15, finalY);
+                    finalY += 4;
+
+                    const recentComments = messages.slice(-5).map(m => [m.senderName, m.text]);
+                    if(recentComments.length > 0) {
+                        doc.autoTable({ startY: finalY, head: [['Nama Pengirim', 'Komentar / Saran']], body: recentComments, theme: 'grid', headStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0] }, styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 0: { cellWidth: 40, fontStyle: 'bold' } } });
+                        finalY = doc.lastAutoTable.finalY + 15;
+                    } else {
+                        doc.setFont("helvetica", "italic"); doc.text("Belum ada saran/komentar dari warga.", 15, finalY); finalY += 15;
+                    }
+
+                    // TANDA TANGAN
+                    if (finalY > 240) { doc.addPage(); finalY = 30; } 
+                    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+                    doc.text("Mengetahui,", 25, finalY); doc.text("Ketua TPS3R", 25, finalY + 6);
+                    doc.setFont("helvetica", "bold"); doc.text(profile.ketua || "Ketua TPS3R", 25, finalY + 30);
+                    
+                    doc.setFont("helvetica", "normal"); doc.text(`Desa Karang Bajo, ${formatIndoDate(new Date())}`, 125, finalY); doc.text("Kepala Desa Karang Bajo", 125, finalY + 6);
+                    doc.setFont("helvetica", "bold"); doc.text(profile.kepalaDesa || "Kepala Desa", 125, finalY + 30);
+
+                    doc.save(`Laporan_Keuangan_TPS3R_${startDate}.pdf`);
+                } catch (err) { alert("Terjadi kesalahan saat membuat PDF."); } 
+                finally { setIsGeneratingPDF(false); }
             };
 
             const generateReportExcel = (dataList = null, isBackup = false) => {
+                if(!isAdmin) return;
                 const dataToExport = dataList || getFilteredDataByDate();
-                const formattedData = dataToExport.map(c => ({ ID: c.id, Nama: c.name, Alamat: c.address, Kategori: c.type, NoHP: c.phone || '-', Tarif: c.rate, Status: c.status, TanggalBayar: c.paymentDate ? new Date(c.paymentDate).toISOString() : '-' }));
-                const worksheet = XLSX.utils.json_to_sheet(formattedData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Data_TPS3R");
-                XLSX.writeFile(workbook, isBackup ? `Backup_Semua_Data_TPS3R.xlsx` : `Laporan_TPS3R_${startDate}_to_${endDate}.xlsx`);
+                const expensesToExport = isBackup ? expenses : getFilteredExpensesByDate();
+
+                const formattedInc = dataToExport.map(c => ({ ID: c.id, Nama: c.name, Alamat: c.address, Kategori: c.type, NoHP: c.phone || '-', Tarif: c.rate, Status: c.status, TanggalBayar: c.paymentDate ? new Date(c.paymentDate).toISOString() : '-' }));
+                const formattedExp = expensesToExport.map(e => ({ ID: e.id, Tanggal: new Date(e.timestamp).toISOString(), Keterangan: e.reason, JumlahKeluar: e.amount }));
+
+                const wb = XLSX.utils.book_new();
+                
+                // Sheet Pemasukan
+                const wsInc = XLSX.utils.json_to_sheet(formattedInc); 
+                XLSX.utils.book_append_sheet(wb, wsInc, "Pemasukan_Iuran");
+                
+                // Sheet Pengeluaran
+                if (formattedExp.length > 0) {
+                    const wsExp = XLSX.utils.json_to_sheet(formattedExp);
+                    XLSX.utils.book_append_sheet(wb, wsExp, "Pengeluaran_Dana");
+                }
+
+                XLSX.writeFile(wb, isBackup ? `Backup_Keuangan_TPS3R.xlsx` : `Laporan_Keuangan_TPS3R_${startDate}_to_${endDate}.xlsx`);
             };
 
+            // NOTE: Import Excel difokuskan untuk Pemulihan Warga (Pemasukan)
             const handleImportExcel = (e) => {
                 if (!isAdmin) return;
                 const file = e.target.files[0]; if(!file) return;
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
                     try {
-                        const bstr = evt.target.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws);
-                        if(data.length === 0) return alert("File kosong!"); if(!confirm(`Ditemukan ${data.length} data. Lanjutkan pemulihan data?`)) return;
+                        const bstr = evt.target.result; const wb = XLSX.read(bstr, { type: 'binary' }); 
+                        const wsname = wb.SheetNames[0]; // Ambil sheet pertama saja (Data Warga)
+                        const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws);
+                        if(data.length === 0) return alert("File kosong!"); if(!confirm(`Ditemukan ${data.length} data warga. Lanjutkan pemulihan data?`)) return;
 
                         const batch = db.batch(); const collectionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('customers');
                         let count = 0;
@@ -377,23 +551,16 @@
                                 batch.set(collectionRef.doc(docId), { id: Number(docId), name: String(row.Nama), type: String(row.Kategori), address: String(row.Alamat || ''), phone: String(row.NoHP === '-' ? '' : row.NoHP), rate: Number(row.Tarif || 15000), status: String(row.Status || 'belum'), paymentDate: row.TanggalBayar && row.TanggalBayar !== '-' ? new Date(row.TanggalBayar).getTime() : null }, { merge: true }); count++;
                             }
                         });
-                        await batch.commit(); alert(`Berhasil mengimpor ${count} data!`); e.target.value = ''; 
-                    } catch (error) { alert("Gagal membaca file Excel. Pastikan format sesuai dengan file Backup."); }
+                        await batch.commit(); alert(`Berhasil mengimpor ${count} data warga!`); e.target.value = ''; 
+                    } catch (error) { alert("Gagal membaca file Excel."); }
                 };
                 reader.readAsBinaryString(file);
             };
 
-            // --- KALKULASI DASHBOARD ---
-            const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.address.toLowerCase().includes(searchTerm.toLowerCase()));
-            const totalCustomers = customers.length;
-            const totalIncomeCollected = customers.filter(c => c.status === 'lunas').reduce((acc, curr) => acc + curr.rate, 0);
-            const percentCollected = totalCustomers > 0 ? Math.round((customers.filter(c => c.status === 'lunas').length / totalCustomers) * 100) : 0;
-            const avgRating = ratings.length ? (ratings.reduce((a,c) => a+c.stars, 0) / ratings.length).toFixed(1) : 0;
-
             const NavItem = ({ icon: Icon, label, tabId }) => (
                 <button 
                     onClick={() => setView(tabId)} 
-                    className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 p-2 md:px-4 md:py-2.5 rounded-xl md:rounded-full transition-all duration-300 min-w-[60px] md:w-auto
+                    className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 p-2 md:px-4 md:py-2.5 rounded-xl md:rounded-full transition-all duration-300 min-w-[65px] md:w-auto
                     ${view === tabId ? 'text-indigo-600 bg-indigo-50 md:bg-white/20 md:text-white font-bold' : 'text-slate-400 hover:text-indigo-500 md:text-white/70 md:hover:bg-white/10 md:hover:text-white'}`}
                 >
                     <Icon /> <span className="text-[10px] md:text-sm whitespace-nowrap">{label}</span>
@@ -417,16 +584,16 @@
                                 <NavItem icon={Icons.Dashboard} label="Dashboard" tabId="dashboard" />
                                 <NavItem icon={Icons.Users} label="Data Warga" tabId="customers" />
                                 <NavItem icon={Icons.MessageCircle} label="Diskusi" tabId="forum" />
-                                <NavItem icon={Icons.FileText} label="Laporan" tabId="rekap" />
+                                {isAdmin && <NavItem icon={Icons.FileText} label="Laporan" tabId="rekap" />}
                                 <NavItem icon={Icons.Info} label="Tentang" tabId="about" />
                                 {isAdmin && <NavItem icon={Icons.Settings} label="Sync" tabId="sync" />}
                             </nav>
                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/20">
-                                    <span className="text-xs font-bold hidden md:inline">{isAdmin ? 'Admin ON' : 'Mode Admin'}</span>
-                                    <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                                        <input type="checkbox" checked={isAdmin} onChange={handleToggleAdmin} name="toggle" id="toggle" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0.5 left-0.5 transition-all duration-300"/>
-                                        <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-indigo-900/50 cursor-pointer"></label>
+                                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/20 shadow-sm cursor-pointer" onClick={handleToggleAdmin} title="Klik saklar ini untuk Mode Admin">
+                                    <span className="text-[10px] sm:text-xs font-bold hidden sm:inline">{isAdmin ? 'Admin ON' : 'Mode Admin'}</span>
+                                    <div className="relative inline-block w-8 sm:w-10 mr-1 sm:mr-2 align-middle select-none transition duration-200 ease-in pointer-events-none">
+                                        <input type="checkbox" checked={isAdmin} readOnly className="toggle-checkbox absolute block w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white border-4 appearance-none z-10 top-0.5 left-0.5 transition-all duration-300"/>
+                                        <label className="toggle-label block overflow-hidden h-5 sm:h-6 rounded-full bg-indigo-900/50"></label>
                                     </div>
                                     {isAdmin ? <Icons.Unlock /> : <Icons.Lock />}
                                 </div>
@@ -451,28 +618,37 @@
                                     )}
                                 </div>
 
-                                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${isAdmin ? 'xl:grid-cols-4' : ''}`}>
-                                    {/* SENSITIF: Hanya Admin yang bisa melihat Uang Terkumpul */}
+                                <div className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
+                                    {/* SENSITIF: Hanya Admin yang bisa melihat Saldo dan Pengeluaran */}
                                     {isAdmin && (
-                                        <div className="bg-indigo-600 text-white p-6 rounded-3xl shadow-sm relative overflow-hidden group">
-                                            <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest">Dana Terkumpul</p>
-                                            <h3 className="text-3xl font-black mt-2">{formatRupiah(totalIncomeCollected)}</h3>
-                                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+                                        <div className="bg-indigo-600 text-white p-6 rounded-3xl shadow-sm relative overflow-hidden group col-span-1 md:col-span-2 xl:col-span-1 flex flex-col justify-between min-h-[160px]">
+                                            <div>
+                                                <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest">Saldo Kas Saat Ini</p>
+                                                <h3 className="text-3xl font-black mt-2">{formatRupiah(currentBalance)}</h3>
+                                                <div className="mt-3 text-[10px] text-indigo-100 flex justify-between bg-indigo-900/30 p-2 rounded-lg">
+                                                    <span>In: {formatRupiah(totalIncomeCollected)}</span>
+                                                    <span>Out: {formatRupiah(totalExpensesVal)}</span>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => setShowExpenseModal(true)} className="mt-4 bg-white text-indigo-600 hover:bg-indigo-50 py-2.5 rounded-xl text-xs font-bold transition flex justify-center items-center gap-2 shadow-md z-10 relative">
+                                                <Icons.Wallet /> Tarik Dana / Pengeluaran
+                                            </button>
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
                                         </div>
                                     )}
                                     
-                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group">
+                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group flex flex-col justify-center min-h-[160px]">
                                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Total Warga</p>
                                         <h3 className="text-3xl font-black text-slate-800 mt-2">{totalCustomers} <span className="text-sm font-medium text-slate-400">Terdaftar</span></h3>
                                         <div className="absolute top-0 right-0 w-24 h-24 bg-sky-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
                                     </div>
-                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group">
+                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group flex flex-col justify-center min-h-[160px]">
                                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Kepatuhan Warga</p>
                                         <h3 className="text-3xl font-black text-emerald-500 mt-2">{percentCollected}% <span className="text-sm font-medium text-slate-400">Lunas</span></h3>
                                         <div className="w-full bg-slate-100 rounded-full h-2 mt-3"><div className="bg-emerald-400 h-2 rounded-full transition-all duration-1000" style={{ width: `${percentCollected}%` }}></div></div>
                                         <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
                                     </div>
-                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group">
+                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group flex flex-col justify-center min-h-[160px]">
                                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Rating Pelayanan</p>
                                         <div className="flex items-center gap-2 mt-2">
                                             <h3 className="text-3xl font-black text-amber-500">{avgRating}</h3>
@@ -580,15 +756,25 @@
 
                         {/* VIEW 3: RUANG DISKUSI WARGA & RATING */}
                         {view === 'forum' && (
-                            <div className="space-y-6 animate-fade-in-up max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col">
+                            <div className="space-y-4 animate-fade-in-up max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col">
                                 
+                                {/* Info Admin & Hubungi Cepat */}
+                                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-3 shrink-0 shadow-sm">
+                                    <div className="text-sm text-indigo-800 text-center md:text-left">
+                                        <span className="font-bold block md:inline">Butuh Bantuan Cepat atau Keluhan Privasi?</span> Hubungi langsung Ketua TPS3R:
+                                    </div>
+                                    <a href={`https://wa.me/${profile.kontak.replace(/^0/, '62')}`} target="_blank" className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-700 transition flex items-center gap-2 shadow-md">
+                                        📞 Chat WhatsApp ({profile.kontak})
+                                    </a>
+                                </div>
+
                                 {/* Header Forum & Rating Bintang */}
                                 <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
                                     <div>
-                                        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Icons.MessageCircle /> Ruang Diskusi & Saran</h2>
-                                        <p className="text-xs text-slate-500">Sampaikan pertanyaan atau saran Anda di sini.</p>
+                                        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Icons.MessageCircle /> Ruang Diskusi Umum</h2>
+                                        <p className="text-xs text-slate-500">Bebas berkomentar menggunakan nama samaran.</p>
                                     </div>
-                                    <div className="bg-amber-50 p-3 rounded-2xl flex items-center gap-3 w-full md:w-auto">
+                                    <div className="bg-amber-50 p-3 rounded-2xl flex items-center gap-3 w-full md:w-auto justify-center">
                                         <span className="text-xs font-bold text-amber-700">Tingkat Kepuasan:</span>
                                         <div className="flex gap-1">
                                             {[1,2,3,4,5].map(star => (
@@ -611,11 +797,10 @@
                                             messages.map((msg, i) => (
                                                 <div key={msg.id || i} className={`flex ${msg.uid === (user?.uid) ? 'justify-end' : 'justify-start'}`}>
                                                     <div className={`p-3 md:p-4 rounded-2xl max-w-[85%] md:max-w-[70%] shadow-sm ${msg.isAdmin ? 'bg-indigo-50 border border-indigo-100 rounded-tl-none' : msg.uid === (user?.uid) ? 'bg-emerald-50 border border-emerald-100 rounded-tr-none' : 'bg-white border border-slate-100 rounded-tl-none'}`}>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="font-bold text-sm text-slate-800">{msg.senderName}</span>
+                                                        <div className="flex items-center gap-2 mb-2 border-b border-black/5 pb-1">
+                                                            <span className="font-bold text-xs text-slate-800">{msg.senderName}</span>
                                                             {msg.isAdmin && <span className="bg-indigo-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">Admin</span>}
                                                         </div>
-                                                        <a href={`https://wa.me/${msg.senderPhone.replace(/^0/, '62')}`} target="_blank" className="text-[10px] text-emerald-600 mb-2 inline-block font-bold hover:underline">📞 {msg.senderPhone}</a>
                                                         <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                                                         <span className="text-[10px] text-slate-400 mt-2 block text-right">{formatIndoDateTime(msg.createdAt)}</span>
                                                     </div>
@@ -625,15 +810,12 @@
                                         <div ref={messagesEndRef} />
                                     </div>
 
-                                    {/* Input Chat */}
+                                    {/* Input Chat (No Phone Needed, Optional Name) */}
                                     <div className="bg-white p-4 border-t border-slate-100 shrink-0">
                                         <form onSubmit={handleSendMessage} className="space-y-3">
+                                            <input type="text" placeholder="Nama Anda (Boleh Samaran / Kosongkan)..." value={chatName} onChange={e=>setChatName(e.target.value)} className="w-full md:w-1/3 border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none text-sm focus:border-indigo-400 focus:bg-white transition" />
                                             <div className="flex gap-2">
-                                                <input type="text" placeholder="Nama Asli..." required value={chatName} onChange={e=>setChatName(e.target.value)} className="w-1/2 border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none text-sm focus:border-indigo-400 focus:bg-white transition" />
-                                                <input type="tel" placeholder="No. WA (0812...)" required value={chatPhone} onChange={e=>setChatPhone(e.target.value)} className="w-1/2 border border-slate-200 p-2.5 rounded-xl bg-slate-50 outline-none text-sm focus:border-indigo-400 focus:bg-white transition" />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <textarea placeholder="Ketik saran atau pesan Anda di sini..." required value={chatText} onChange={e=>setChatText(e.target.value)} className="flex-1 border border-slate-200 p-3 rounded-xl bg-slate-50 outline-none text-sm resize-none h-12 focus:border-indigo-400 focus:bg-white transition" onKeyDown={(e) => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); handleSendMessage(e); } }} />
+                                                <textarea placeholder="Ketik saran, keluhan, atau pesan Anda di sini..." required value={chatText} onChange={e=>setChatText(e.target.value)} className="flex-1 border border-slate-200 p-3 rounded-xl bg-slate-50 outline-none text-sm resize-none h-12 focus:border-indigo-400 focus:bg-white transition" onKeyDown={(e) => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); handleSendMessage(e); } }} />
                                                 <button type="submit" className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition flex items-center justify-center shrink-0 w-12 h-12 shadow-md">
                                                     <Icons.Send />
                                                 </button>
@@ -644,20 +826,24 @@
                             </div>
                         )}
 
-                        {/* VIEW 4: LAPORAN */}
-                        {view === 'rekap' && (
+                        {/* VIEW 4: LAPORAN (HANYA ADMIN) */}
+                        {view === 'rekap' && isAdmin && (
                             <div className="space-y-6 animate-fade-in-up max-w-4xl mx-auto">
                                 <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
-                                    <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Icons.FileText /> Export Laporan Warga</h2>
+                                    <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Icons.FileText /> Laporan Keuangan Resmi</h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-2xl">
                                         <div><label className="text-xs font-bold text-slate-500 block mb-2">Dari Tanggal</label><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full border-none p-3 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium" /></div>
                                         <div><label className="text-xs font-bold text-slate-500 block mb-2">Sampai Tanggal</label><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full border-none p-3 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium" /></div>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-3">
-                                        <button onClick={generateReportPDF} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3.5 rounded-xl font-bold transition shadow-md flex justify-center items-center gap-2"><Icons.FileDown /> Download PDF</button>
-                                        <button onClick={() => generateReportExcel()} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-bold transition shadow-md flex justify-center items-center gap-2"><Icons.FileDown /> Download Excel</button>
+                                        <button onClick={generateReportPDF} disabled={isGeneratingPDF} className={`flex-1 text-white py-3.5 rounded-xl font-bold transition shadow-md flex justify-center items-center gap-2 ${isGeneratingPDF ? 'bg-red-400 cursor-wait' : 'bg-red-500 hover:bg-red-600'}`}>
+                                            <Icons.FileDown /> {isGeneratingPDF ? 'Memproses PDF...' : 'Download Laporan (PDF)'}
+                                        </button>
+                                        <button onClick={() => generateReportExcel()} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-bold transition shadow-md flex justify-center items-center gap-2">
+                                            <Icons.FileDown /> Download Data (Excel)
+                                        </button>
                                     </div>
-                                    <p className="text-xs text-center mt-4 text-slate-400">*Laporan PDF otomatis menyertakan tanda tangan Kepala Desa & Ketua TPS3R.</p>
+                                    <p className="text-xs text-center mt-4 text-slate-400">PDF otomatis memuat Kop Surat Resmi, Rincian Pengeluaran, Rating Warga, dan Saldo.</p>
                                 </div>
                             </div>
                         )}
@@ -713,13 +899,13 @@
                                     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 text-center">
                                         <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500 mx-auto mb-4"><Icons.DownloadCloud /></div>
                                         <h3 className="text-lg font-bold text-slate-800 mb-2">Backup Data</h3>
-                                        <p className="text-xs text-slate-500 mb-6">Unduh seluruh data warga ke format Excel.</p>
-                                        <button onClick={() => generateReportExcel(customers, true)} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold transition">Unduh Semua Data</button>
+                                        <p className="text-xs text-slate-500 mb-6">Unduh seluruh data (Pemasukan & Pengeluaran) ke format Excel.</p>
+                                        <button onClick={() => generateReportExcel(null, true)} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold transition">Unduh Semua Data</button>
                                     </div>
                                     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 text-center">
                                         <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mx-auto mb-4"><Icons.UploadCloud /></div>
-                                        <h3 className="text-lg font-bold text-slate-800 mb-2">Pulihkan Data</h3>
-                                        <p className="text-xs text-slate-500 mb-6">Unggah file Excel hasil Backup.</p>
+                                        <h3 className="text-lg font-bold text-slate-800 mb-2">Pulihkan Data (Warga)</h3>
+                                        <p className="text-xs text-slate-500 mb-6">Unggah file Excel hasil Backup khusus untuk memulihkan data Pemasukan Warga.</p>
                                         <label className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold transition flex justify-center items-center cursor-pointer">
                                             Pilih File Excel <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcel} />
                                         </label>
@@ -729,13 +915,13 @@
                         )}
                     </main>
 
-                    {/* MOBILE NAV (Bisa di-scroll ke samping kalau layarnya kecil) */}
+                    {/* MOBILE NAV */}
                     <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 pb-safe overflow-x-auto hide-scrollbar">
-                        <div className="flex justify-start items-center p-2 gap-1 min-w-max px-4">
+                        <div className="flex justify-start items-center p-2 gap-2 min-w-max px-4">
                             <NavItem icon={Icons.Dashboard} label="Home" tabId="dashboard" />
                             <NavItem icon={Icons.Users} label="Warga" tabId="customers" />
                             <NavItem icon={Icons.MessageCircle} label="Diskusi" tabId="forum" />
-                            <NavItem icon={Icons.FileText} label="Laporan" tabId="rekap" />
+                            {isAdmin && <NavItem icon={Icons.FileText} label="Laporan" tabId="rekap" />}
                             <NavItem icon={Icons.Info} label="Tentang" tabId="about" />
                             {isAdmin && <NavItem icon={Icons.Settings} label="Sync" tabId="sync" />}
                         </div>
@@ -747,7 +933,7 @@
                             <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
                                 <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.Lock /></div>
                                 <h3 className="text-xl font-bold text-slate-800 mb-2 text-center">Akses Admin</h3>
-                                <p className="text-xs text-slate-500 text-center mb-6">Masukkan sandi khusus untuk mengedit data.</p>
+                                <p className="text-xs text-slate-500 text-center mb-6">Masukkan sandi khusus untuk mengedit dan melihat laporan.</p>
                                 <form onSubmit={submitAdminLogin} className="space-y-4">
                                     <input autoFocus type="password" value={inputPin} onChange={(e) => setInputPin(e.target.value)} className="w-full border-2 border-slate-200 p-3 rounded-xl bg-slate-50 focus:border-indigo-500 outline-none text-center font-bold tracking-[0.3em]" placeholder="••••" />
                                     {pinError && <p className="text-red-500 text-xs text-center font-bold">{pinError}</p>}
@@ -775,7 +961,7 @@
                                     <div><label className="text-xs font-bold text-slate-500 block mb-1">Deskripsi TPS3R</label><textarea required value={editProfileData.tentang} onChange={(e) => setEditProfileData({...editProfileData, tentang: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm h-24 resize-none" /></div>
                                     <div><label className="text-xs font-bold text-slate-500 block mb-1">Daftar Anggota</label><textarea value={editProfileData.anggota} onChange={(e) => setEditProfileData({...editProfileData, anggota: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm h-28 resize-none" placeholder="1. Anggota Satu&#10;2. Anggota Dua" /></div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">No. HP / Kontak</label><input type="text" value={editProfileData.kontak} onChange={(e) => setEditProfileData({...editProfileData, kontak: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">No. HP / Kontak (WA Ketua)</label><input type="text" value={editProfileData.kontak} onChange={(e) => setEditProfileData({...editProfileData, kontak: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm" /></div>
                                         <div><label className="text-xs font-bold text-slate-500 block mb-1">Alamat Kantor</label><input type="text" value={editProfileData.alamatDesa} onChange={(e) => setEditProfileData({...editProfileData, alamatDesa: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 outline-none text-sm" /></div>
                                     </div>
                                     <div className="pt-4 flex gap-3 sticky bottom-0 bg-white pb-2">
@@ -796,10 +982,34 @@
                                     <div><label className="text-xs font-bold text-slate-500 block mb-1">Nama Lengkap</label><input required type="text" value={newCustomer.name} onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})} className="w-full border-none p-3 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /></div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div><label className="text-xs font-bold text-slate-500 block mb-1">Kategori</label><select value={newCustomer.type} onChange={handleTypeChange} className="w-full border-none p-3 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm">{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></div>
-                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">No. HP</label><input type="tel" value={newCustomer.phone} onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})} className="w-full border-none p-3 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">No. HP (Opsional)</label><input type="tel" value={newCustomer.phone} onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})} className="w-full border-none p-3 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /></div>
                                     </div>
                                     <div><label className="text-xs font-bold text-slate-500 block mb-1">Alamat</label><textarea required value={newCustomer.address} onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})} className="w-full border-none p-3 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm h-20 resize-none" /></div>
                                     <div className="pt-2 flex gap-3"><button type="button" onClick={() => setShowAddModal(false)} className="flex-1 bg-slate-100 text-slate-600 py-3.5 rounded-xl font-bold hover:bg-slate-200">Batal</button><button type="submit" className="flex-1 gradient-bg text-white py-3.5 rounded-xl font-bold shadow-lg">Simpan</button></div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL: TARIK DANA / PENGELUARAN (HANYA ADMIN) */}
+                    {showExpenseModal && isAdmin && (
+                        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowExpenseModal(false)}>
+                            <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-bold text-slate-800 mb-1 flex items-center gap-2"><Icons.Wallet /> Tarik Dana Kas</h3>
+                                <p className="text-xs text-slate-500 mb-6 border-b pb-3">Saldo Maksimal yang dapat ditarik: <b>{formatRupiah(currentBalance)}</b></p>
+                                <form onSubmit={handleSaveExpense} className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 block mb-1">Jumlah Tarik (Rp)</label>
+                                        <input required type="number" min="1" max={currentBalance} value={newExpense.amount} onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})} className="w-full border-none p-3 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold text-indigo-700" placeholder="Contoh: 100000" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 block mb-1">Keterangan / Digunakan Untuk Apa?</label>
+                                        <textarea required value={newExpense.reason} onChange={(e) => setNewExpense({...newExpense, reason: e.target.value})} className="w-full border-none p-3 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm h-24 resize-none" placeholder="Contoh: Pembelian sapu, Perbaikan gerobak, Setor kas desa, atau Reset Dana." />
+                                    </div>
+                                    <div className="pt-2 flex gap-3">
+                                        <button type="button" onClick={() => setShowExpenseModal(false)} className="flex-1 bg-slate-100 text-slate-600 py-3.5 rounded-xl font-bold hover:bg-slate-200">Batal</button>
+                                        <button type="submit" className="flex-1 bg-red-500 text-white hover:bg-red-600 py-3.5 rounded-xl font-bold shadow-lg">Tarik Dana</button>
+                                    </div>
                                 </form>
                             </div>
                         </div>
