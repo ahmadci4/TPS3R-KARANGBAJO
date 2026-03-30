@@ -478,22 +478,7 @@
                         finalY = doc.lastAutoTable.finalY + 12;
                     }
 
-                    // RATING & KOMENTAR
-                    if (finalY > 230) { doc.addPage(); finalY = 20; }
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`Tingkat Kepuasan Masyarakat: ${avgRatingCalc} / 5.0 Bintang (${ratings.length} Ulasan)`, 15, finalY);
-                    finalY += 8;
-                    doc.text("Sorotan Saran & Masukan Warga:", 15, finalY);
-                    finalY += 4;
-
-                    const recentComments = messages.slice(-5).map(m => [m.senderName, m.text]);
-                    if(recentComments.length > 0) {
-                        doc.autoTable({ startY: finalY, head: [['Nama Pengirim', 'Komentar / Saran']], body: recentComments, theme: 'grid', headStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0] }, styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 0: { cellWidth: 40, fontStyle: 'bold' } } });
-                        finalY = doc.lastAutoTable.finalY + 15;
-                    } else {
-                        doc.setFont("helvetica", "italic"); doc.text("Belum ada saran/komentar dari warga.", 15, finalY); finalY += 15;
-                    }
-
+                   
                     // TANDA TANGAN
                     if (finalY > 240) { doc.addPage(); finalY = 30; } 
                     doc.setFontSize(10); doc.setFont("helvetica", "normal");
